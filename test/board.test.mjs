@@ -41,3 +41,28 @@ test('sortNewestFirst orders by openedAt, newest first, without mutating input',
 test('escapeHtml neutralises markup in incident text', () => {
   assert.equal(escapeHtml('<img src=x onerror=1> & "q"'), '&lt;img src=x onerror=1&gt; &amp; &quot;q&quot;');
 });
+
+import { reconcile, confirmText } from '../app/board.js';
+
+test('reconcile: new incidents are inserted, existing rows are kept, nothing removed', () => {
+  const ops = reconcile(['B', 'C'], [{ id: 'A', openedAt: '2026-11-12T12:00:00Z' }, { id: 'B', openedAt: '2026-11-12T11:00:00Z' }, { id: 'C', openedAt: '2026-11-12T10:00:00Z' }]);
+  assert.deepEqual(ops.order, ['A', 'B', 'C']);
+  assert.deepEqual(ops.create, ['A']);
+  assert.deepEqual(ops.remove, []);
+});
+
+test('reconcile: an incident gone from the feed is the only removal', () => {
+  const ops = reconcile(['A', 'B', 'C'], [{ id: 'A', openedAt: '2026-11-12T12:00:00Z' }, { id: 'C', openedAt: '2026-11-12T10:00:00Z' }]);
+  assert.deepEqual(ops.remove, ['B']);
+  assert.deepEqual(ops.create, []);
+});
+
+test('reconcile: unchanged feed means no create and no remove', () => {
+  const ops = reconcile(['A'], [{ id: 'A', openedAt: '2026-11-12T12:00:00Z' }]);
+  assert.deepEqual([ops.create, ops.remove], [[], []]);
+});
+
+test('confirmText names the incident id', () => {
+  const t = confirmText({ id: 'INC-1956', severity: 'sev2', service: 'calendar-sync', summary: 'calendar push rejected' });
+  assert.match(t, /INC-1956/);
+});

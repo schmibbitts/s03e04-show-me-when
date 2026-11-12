@@ -1,0 +1,5 @@
+challengeId=c0000000-0000-4000-8000-0000005e03e4
+session=v1.eyJzZWVkIjoiZjhiYzY5NzJmNDViIiwic3ViIjoiNDcxMSIsImF1ZCI6InNlc3Npb246c2hvdy1tZS13aGVuIiwiaWF0IjoxNzk0NDg2NjU1LCJleHAiOjE3OTUwOTE0NTV9.i90xFflNr6qmVLQrsUOf5rLI3dad_7Z5c2tlVYGtc_k
+sessionExpiresAt=2026-11-19T12:30:55.000Z
+starter=https://hq.mega.dev/media/show-me-when/sched-prod-board-2dff0937.zip
+api=https://hq.mega.dev/challenges/show-me-when/api
