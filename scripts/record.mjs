@@ -100,11 +100,35 @@ if (race) {
   const ackResp = page.waitForResponse((r) => r.url().includes('/ack?'));
   await page.waitForTimeout(120); // the click already on its way
   await page.mouse.click(x, y);
+  // With R7 the click opens a confirm instead of acking. The person reads it before going on.
+  const confirmBox = page.getByTestId('confirm');
+  if (await confirmBox.isVisible({ timeout: 1000 }).catch(() => false)) {
+    const glide = async (loc) => {
+      const b = await loc.boundingBox();
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 20 });
+      await page.waitForTimeout(400);
+      await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+    };
+    let text = await confirmBox.innerText();
+    mark('ack-incident', 'confirm opened', { names: /INC-\d+/.exec(text)?.[0], meant });
+    await page.waitForTimeout(2500); // reading it
+    if (!text.includes(meant)) {
+      await glide(page.getByTestId('confirm-cancel'));
+      mark('ack-incident', 'confirm named the wrong incident; cancelled, nothing sent', { names: /INC-\d+/.exec(text)?.[0], acksSent: acks.length });
+      await page.waitForTimeout(1500);
+      await glide(page.locator(`[data-testid="incident-row"][data-id="${meant}"] [data-testid="ack"]`));
+      text = await confirmBox.innerText();
+      mark('ack-incident', 'Ack on the meant row; confirm names it', { names: /INC-\d+/.exec(text)?.[0] });
+      await page.waitForTimeout(2500);
+    }
+    await glide(page.getByTestId('confirm-ack'));
+    mark('ack-incident', 'confirm-ack clicked', { names: /INC-\d+/.exec(text)?.[0] });
+  }
   const reply = await (await ackResp).json();
   id = reply.id;
-  mark('ack-incident', 'click at the same spot acked a different row', { meant, acked: id, ackedAt: reply.ackedAt });
+  mark('ack-incident', reply.id === meant ? 'acked the row I meant' : 'click at the same spot acked a different row', { meant, acked: id, ackedAt: reply.ackedAt });
   await page.locator(`[data-testid="incident-row"][data-id="${id}"] [data-testid="acked"]`).waitFor();
-  mark('ack-incident', 'board shows the wrong row acked; the meant row is still open', {
+  mark('ack-incident', 'board shows the acked row', {
     acked: id,
     meantStillOpen: await page.locator(`[data-testid="incident-row"][data-id="${meant}"] [data-testid="ack"]`).isVisible(),
   });
