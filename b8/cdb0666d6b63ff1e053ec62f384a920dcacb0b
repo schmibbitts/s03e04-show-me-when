@@ -1,0 +1,20 @@
+app.js
+  h_c467c8ac8e551f 2,11-14,18-19,21-23,26-55,57-78,81-104,106-120,122,131
+board.js
+  h_c467c8ac8e551f 29-48
+index.html
+  h_c467c8ac8e551f 6,21-31
+style.css
+  h_c467c8ac8e551f 20-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8cdb0666d6b63ff1e053ec62f384a920dcacb0b",
+  "prompts": {},
+  "humans": {
+    "h_c467c8ac8e551f": {
+      "author": "Lindsey Tibbitts <350882837+schmibbitts@users.noreply.github.com>"
+    }
+  }
+}
