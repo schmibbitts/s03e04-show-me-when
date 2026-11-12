@@ -26,3 +26,23 @@ export function escapeHtml(s) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
+
+/**
+ * Keyed update plan for the list: which rows to create and which to remove, and the final order
+ * (newest first). Rows that stay are kept as they are, so the DOM never drops a row that is still live.
+ */
+export function reconcile(currentIds, incidents) {
+  const order = sortNewestFirst(incidents).map((i) => i.id);
+  const have = new Set(currentIds);
+  const want = new Set(order);
+  return {
+    order,
+    create: order.filter((id) => !have.has(id)),
+    remove: currentIds.filter((id) => !want.has(id)),
+  };
+}
+
+/** What the Ack confirm says: it names the incident id first, so a moved row cannot be acked unseen. */
+export function confirmText(i) {
+  return `Ack ${i.id}? ${i.severity} · ${i.service} · ${i.summary}`;
+}
