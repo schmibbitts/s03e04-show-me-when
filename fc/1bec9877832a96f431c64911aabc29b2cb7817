@@ -1,0 +1,21 @@
+scripts/record.mjs
+  s_f15fc0b4683a8f::t_2c6f8be5c4f03a 3
+  s_f15fc0b4683a8f::t_4f74bbb6329f39 110-116
+  s_f15fc0b4683a8f::t_28b34e59d26e58 5-6,17-19,27-38,103-104,108-109,117-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc1bec9877832a96f431c64911aabc29b2cb7817",
+  "prompts": {},
+  "sessions": {
+    "s_f15fc0b4683a8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce5fc86-60b3-4379-b04d-b5aad7270641",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lindsey Tibbitts <350882837+schmibbitts@users.noreply.github.com>"
+    }
+  }
+}
