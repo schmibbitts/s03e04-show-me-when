@@ -53,6 +53,20 @@ page.on('response', async (r) => {
   }
 });
 
+const race = args.includes('--race');
+// Draw the pointer into the page so the recording shows where the person clicks (screenshots omit the OS cursor).
+await page.addInitScript(() => {
+  addEventListener('DOMContentLoaded', () => {
+    const dot = document.createElement('div');
+    dot.id = '__pointer';
+    dot.style.cssText = 'position:fixed;z-index:99999;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:rgba(220,0,60,.55);border:2px solid #c00;pointer-events:none;left:-50px;top:-50px;transition:transform .08s';
+    document.body.appendChild(dot);
+    addEventListener('mousemove', (e) => { dot.style.left = e.clientX + 'px'; dot.style.top = e.clientY + 'px'; }, true);
+    addEventListener('mousedown', () => { dot.style.transform = 'scale(1.8)'; }, true);
+    addEventListener('mouseup', () => { dot.style.transform = ''; }, true);
+  });
+});
+
 await page.goto(url);
 mark('open-board', 'page opened; loader visible', { loader: await page.getByTestId('loader').isVisible() });
 await page.getByTestId('incident-row').first().waitFor();
@@ -64,6 +78,37 @@ mark('open-board', 'incidents on screen; loader gone', {
   sha: await page.getByTestId('build-sha').textContent(),
 });
 
+let id;
+if (race) {
+  // ack-race: a person reads the top row, puts the pointer on its Ack and clicks. They do not wait for the
+  // page to hold still: the click goes out at that spot as the next refresh pushes a new incident in on top.
+  const meant = firstIds[0];
+  const box = await page.locator(`[data-testid="incident-row"][data-id="${meant}"] [data-testid="ack"]`).boundingBox();
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(600, 400);
+  await page.mouse.move(x, y, { steps: 25 });
+  mark('ack-incident', 'pointer on Ack of the row I mean', { meant, x: Math.round(x), y: Math.round(y) });
+  const deadline = Date.now() + waitNewMin * 60_000;
+  let landed = null;
+  while (Date.now() < deadline) {
+    const top = await page.evaluate(() => document.querySelector('[data-testid="incident-row"]')?.dataset.id);
+    if (top && top !== meant) { landed = top; break; }
+    await page.waitForTimeout(25);
+  }
+  mark('watch-board', landed ? 'new incident landed on top; rows shifted down' : 'no new incident', { id: landed });
+  const ackResp = page.waitForResponse((r) => r.url().includes('/ack?'));
+  await page.waitForTimeout(120); // the click already on its way
+  await page.mouse.click(x, y);
+  const reply = await (await ackResp).json();
+  id = reply.id;
+  mark('ack-incident', 'click at the same spot acked a different row', { meant, acked: id, ackedAt: reply.ackedAt });
+  await page.locator(`[data-testid="incident-row"][data-id="${id}"] [data-testid="acked"]`).waitFor();
+  mark('ack-incident', 'board shows the wrong row acked; the meant row is still open', {
+    acked: id,
+    meantStillOpen: await page.locator(`[data-testid="incident-row"][data-id="${meant}"] [data-testid="ack"]`).isVisible(),
+  });
+} else {
 // watch-board: keep it open until a new incident lands on top, without a reload.
 const deadline = Date.now() + waitNewMin * 60_000;
 let newTop = null;
@@ -81,7 +126,7 @@ if (newTop) {
 // ack-incident: ack the top row.
 await page.waitForTimeout(2000);
 const row = page.getByTestId('incident-row').first();
-const id = await row.getAttribute('data-id');
+id = await row.getAttribute('data-id');
 const btn = row.getByTestId('ack');
 await btn.hover();
 await page.waitForTimeout(800);
@@ -91,6 +136,7 @@ await btn.click();
 await ackResp;
 await page.locator(`[data-testid="incident-row"][data-id="${id}"] [data-testid="acked"]`).waitFor();
 mark('ack-incident', 'row shows acked', { id });
+}
 
 // Still acked after a few refreshes.
 await page.waitForTimeout(6000);
