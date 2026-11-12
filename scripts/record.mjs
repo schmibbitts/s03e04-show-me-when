@@ -1,8 +1,9 @@
 // Records the board in use: open-board, watch-board (a new incident arrives live), ack-incident.
 // Usage: node scripts/record.mjs <board url> [--wait-new-min 10] [--locale en-NZ] [--tz Pacific/Auckland]
-// Writes recordings/<name>.webm and recordings/<name>.json (moments as mm:ss from video start, ack receipts).
+// Writes recordings/<name>.mp4 and recordings/<name>.json (moments as mm:ss from video start, ack receipts).
 import { chromium } from 'playwright';
-import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
 const url = args[0];
@@ -13,16 +14,28 @@ const timezoneId = opt('--tz', 'Pacific/Auckland');
 const name = opt('--name', `board-${Date.now()}`);
 if (!url) throw new Error('board url required');
 
-mkdirSync('recordings/tmp', { recursive: true });
+const frameDir = `recordings/frames-${name}`;
+rmSync(frameDir, { recursive: true, force: true });
+mkdirSync(frameDir, { recursive: true });
 const browser = await chromium.launch({ channel: 'msedge' });
 const context = await browser.newContext({
   locale,
   timezoneId,
   viewport: { width: 1100, height: 640 },
-  recordVideo: { dir: 'recordings/tmp', size: { width: 1100, height: 640 } },
 });
-const t0 = Date.now(); // video starts with the context's first page
 const page = await context.newPage();
+// Video = page screenshots stitched by the system ffmpeg (no Playwright ffmpeg download).
+const t0 = Date.now();
+const frames = [];
+let recording = true;
+const grab = (async () => {
+  while (recording) {
+    const t = Date.now() - t0;
+    const file = `${frameDir}/${String(frames.length).padStart(6, '0')}.png`;
+    try { await page.screenshot({ path: file }); frames.push({ file, t }); } catch {}
+    await new Promise((r) => setTimeout(r, Math.max(0, 200 - (Date.now() - t0 - t))));
+  }
+})();
 const at = () => {
   const s = Math.floor((Date.now() - t0) / 1000);
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -87,10 +100,23 @@ mark('ack-incident', 'still acked after refreshes', {
 });
 await page.waitForTimeout(2000);
 
-const video = page.video();
+recording = false;
+await grab;
 await context.close();
 await browser.close();
-const out = `recordings/${name}.webm`;
-renameSync(await video.path(), out);
 writeFileSync(`recordings/${name}.json`, JSON.stringify({ url, locale, timezoneId, moments, acks }, null, 2));
+// ffconcat with each frame held until the next one, so video time == wall time since t0.
+const end = Date.now() - t0;
+let list = 'ffconcat version 1.0\n';
+frames.forEach((f, i) => {
+  const next = i + 1 < frames.length ? frames[i + 1].t : end;
+  const dur = (i === 0 ? next : next - f.t) / 1000; // first frame also covers 0..t
+  list += `file '${f.file.split('/').pop()}'\nduration ${dur.toFixed(3)}\n`;
+});
+list += `file '${frames.at(-1).file.split('/').pop()}'\n`;
+writeFileSync(`${frameDir}/list.txt`, list);
+const out = `recordings/${name}.mp4`;
+execFileSync('ffmpeg', ['-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', `${frameDir}/list.txt`,
+  '-vf', 'fps=10,format=yuv420p', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28', '-movflags', '+faststart', out]);
+rmSync(frameDir, { recursive: true, force: true });
 console.log('video', out);
