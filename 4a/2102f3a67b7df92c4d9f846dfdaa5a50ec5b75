@@ -1,0 +1,19 @@
+.gitignore
+  s_f15fc0b4683a8f::t_1d7683e40bd78e 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a2102f3a67b7df92c4d9f846dfdaa5a50ec5b75",
+  "prompts": {},
+  "sessions": {
+    "s_f15fc0b4683a8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce5fc86-60b3-4379-b04d-b5aad7270641",
+        "model": "unknown"
+      },
+      "human_author": "Lindsey Tibbitts <350882837+schmibbitts@users.noreply.github.com>"
+    }
+  }
+}
